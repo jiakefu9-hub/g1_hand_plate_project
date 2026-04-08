@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+.vscode/
+.idea/
+.DS_Store
+# 可以考虑不忽略资源文件，因为要换电脑跑
+# *.pt
+# *.stl
