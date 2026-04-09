@@ -107,8 +107,11 @@ if __name__ == "__main__":
             d.ctrl[:12] = tau_leg
 
             # --- 2. 腰部与手臂控制 (12~22) ---
-            # 强制 0 力矩排错：将腰部和手臂电机的力矩全部置为 0
-            d.ctrl[12:23] = 0.0
+            # 腰部和手臂关节在 d.qpos 中是从索引 19 到 29 (共11个)，在 d.qvel 中是 18 到 28
+            arm_waist_q = d.qpos[19:30]
+            arm_waist_dq = d.qvel[18:29]
+            tau_arm_waist = pd_control(arm_waist_target, arm_waist_q, arm_waist_kps, np.zeros_like(arm_waist_kds), arm_waist_dq, arm_waist_kds)
+            d.ctrl[12:23] = tau_arm_waist
 
             # mj_step can be replaced with code that also evaluates
             # a policy and applies a control signal before stepping the physics.
