@@ -7,6 +7,11 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 import torch
 import yaml
 
+# --- 引入我们独立的控制器 (随时在这里一键切换算法！) ---
+from arm_pd import ArmPDController
+# from arm_mpc import ArmMPC
+# from arm_lqr import ArmLQR
+
 
 def get_gravity_orientation(quaternion):
     qw = quaternion[0]
@@ -93,6 +98,9 @@ if __name__ == "__main__":
     # load policy
     policy = torch.jit.load(policy_path)
 
+    # --- 实例化手臂控制器 (在这里把 yaml 里的参数喂进去) ---
+    arm_controller = ArmPDController(kps=arm_waist_kps, kds=arm_waist_kds)
+
     with mujoco.viewer.launch_passive(m, d) as viewer:
         # Close the viewer automatically after simulation_duration wall-seconds.
         start = time.time()
@@ -110,7 +118,14 @@ if __name__ == "__main__":
             # 腰部和手臂关节在 d.qpos 中是从索引 19 到 29 (共11个)，在 d.qvel 中是 18 到 28
             arm_waist_q = d.qpos[19:30]
             arm_waist_dq = d.qvel[18:29]
-            tau_arm_waist = pd_control(arm_waist_target, arm_waist_q, arm_waist_kps, np.zeros_like(arm_waist_kds), arm_waist_dq, arm_waist_kds)
+            
+            # --- 核心：在这里调用控制器！---
+            # 这个 compute_tau 接口是所有控制器公用的标准接口
+            tau_arm_waist = arm_controller.compute_tau(
+                q=arm_waist_q, 
+                dq=arm_waist_dq, 
+                target_q=arm_waist_target
+            )
             d.ctrl[12:23] = tau_arm_waist
 
             # mj_step can be replaced with code that also evaluates
