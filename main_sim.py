@@ -77,6 +77,19 @@ if __name__ == "__main__":
     d = mujoco.MjData(m)
     m.opt.timestep = simulation_dt
 
+    # --- 调试打印：输出关节和驱动器的映射关系 ---
+    print("="*50)
+    print("关节 (Joints - 对应 qpos/qvel):")
+    joint_names = [mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_JOINT, i) for i in range(m.njnt)]
+    for i, name in enumerate(joint_names):
+        print(f"  Joint ID: {i:2d}, Name: {name}")
+    
+    print("\n驱动器 (Actuators - 对应 ctrl):")
+    actuator_names = [mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_ACTUATOR, i) for i in range(m.nu)]
+    for i, name in enumerate(actuator_names):
+        print(f"  Actuator ID: {i:2d}, Name: {name}")
+    print("="*50)
+    
     # load policy
     policy = torch.jit.load(policy_path)
 
@@ -94,11 +107,8 @@ if __name__ == "__main__":
             d.ctrl[:12] = tau_leg
 
             # --- 2. 腰部与手臂控制 (12~22) ---
-            # 共有 11 个关节 (1 腰 + 5 左臂 + 5 右臂)
-            arm_waist_q = d.qpos[19:30]
-            arm_waist_dq = d.qvel[18:29]
-            tau_arm_waist = pd_control(arm_waist_target, arm_waist_q, arm_waist_kps, np.zeros_like(arm_waist_kds), arm_waist_dq, arm_waist_kds)
-            d.ctrl[12:23] = tau_arm_waist
+            # 强制 0 力矩排错：将腰部和手臂电机的力矩全部置为 0
+            d.ctrl[12:23] = 0.0
 
             # mj_step can be replaced with code that also evaluates
             # a policy and applies a control signal before stepping the physics.
